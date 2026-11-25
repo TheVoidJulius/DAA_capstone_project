@@ -30,3 +30,15 @@
 1. Install matplotlib (for runtime charts): `pip install matplotlib`
 2. Run the application: `python courier_planner.py`
 3. Check terminal output for the DP table, selected parcels, shortest route, and benchmark table, plus the generated `runtime_analysis.png` chart.
+
+## Phase 6: Interactive UI (Dispatch Console)
+A browser-based console that runs the **same functions** from `courier_planner.py`. It uses only the Python standard library, so there's nothing to install.
+
+```bash
+python ui_server.py        # then open http://localhost:8000
+```
+
+- **Parcel manifest:** edit, add or remove parcels and change the van capacity, then click **Dispatch**. Rows re-order by merge sort and loaded parcels are highlighted.
+- **City map:** shows the road graph with Dijkstra distances from the Warehouse and the nearest-neighbour tour with an animated van. Toggle to the **Dijkstra shortest-path tree** to see it on its own.
+- **Knapsack DP table:** shows the full `dp[i][w]` grid as a heatmap with the backtracking path traced. Hover any cell to see its recurrence.
+- **Scalability benchmark:** re-runs the Phase 4 timing experiment live and plots it.

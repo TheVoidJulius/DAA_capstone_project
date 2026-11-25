@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courier Dispatch Console</title>
+<style>
+:root{
+  --paper:#f4efe4; --card:#fbf8f1; --ink:#1f1d1a; --ink-2:#5b564d; --line:#d8d0bf;
+  --road:#b9ae98; --signal:#e2551b; --signal-soft:#f6c9b3; --teal:#16736b; --teal-soft:#cfe5e1;
+  --gold:#b7860b; --shadow:0 1px 0 rgba(0,0,0,.04),0 6px 18px -10px rgba(40,30,10,.25);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#16140f; --card:#1f1c16; --ink:#f0e9da; --ink-2:#a79f8f; --line:#3a352b;
+  --road:#5a5243; --signal:#ff7a3d; --signal-soft:#5a2a14; --teal:#45b3a8; --teal-soft:#123632; --gold:#e0b440;
+  --shadow:0 6px 18px -10px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --paper:#16140f; --card:#1f1c16; --ink:#f0e9da; --ink-2:#a79f8f; --line:#3a352b;
+  --road:#5a5243; --signal:#ff7a3d; --signal-soft:#5a2a14; --teal:#45b3a8; --teal-soft:#123632; --gold:#e0b440;
+  --shadow:0 6px 18px -10px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 var(--sans);
+  background-image:radial-gradient(var(--line) .7px,transparent .7px);background-size:18px 18px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.brand small{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+.brand h1{margin:2px 0 0;font-size:26px;letter-spacing:-.02em}
+.tickets{display:flex;gap:10px;flex-wrap:wrap}
+.ticket{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px;box-shadow:var(--shadow);position:relative}
+.ticket:before,.ticket:after{content:"";position:absolute;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--paper);border:1px solid var(--line)}
+.ticket:before{left:-6px;clip-path:inset(0 0 0 50%)} .ticket:after{right:-6px;clip-path:inset(0 50% 0 0)}
+.ticket b{display:block;font:700 20px var(--mono)} .ticket span{font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.08em}
+.meter{height:4px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}.meter i{display:block;height:100%;background:var(--teal);width:0;transition:width .5s}
+
+.rail{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:18px;position:relative}
+.rail:before{content:"";position:absolute;left:12%;right:12%;top:15px;height:3px;background:repeating-linear-gradient(90deg,var(--ink) 0 10px,transparent 10px 16px);opacity:.25}
+.stage{text-align:center;position:relative;cursor:pointer;background:none;border:0;color:inherit;font:inherit;padding:0 4px}
+.stage .dot{width:32px;height:32px;margin:0 auto 6px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--mono);background:var(--card);border:2px solid var(--ink);position:relative;transition:.3s}
+.stage.done .dot{background:var(--ink);color:var(--paper)}
+.stage.active .dot{background:var(--signal);border-color:var(--signal);color:#fff;transform:scale(1.12)}
+.stage h4{margin:0;font-size:13px} .stage p{margin:0;font:11px var(--mono);color:var(--ink-2)}
+
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.rail h4{font-size:11px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px;min-width:0}
+.card h2{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h2 .tag{font:600 10px var(--mono);padding:2px 6px;border-radius:4px;background:var(--ink);color:var(--paper);letter-spacing:.06em}
+.card .sub{color:var(--ink-2);font-size:12px;margin:0 0 12px}
+.span{grid-column:1/-1}
+
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+label.cap{display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+input,select{font:13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 6px;width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--signal);outline-offset:-1px}
+label.cap input{width:70px}
+button.btn{font:600 13px var(--sans);border-radius:8px;padding:7px 12px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+button.btn.primary{background:var(--signal);border-color:var(--signal);color:#fff}
+button.btn:hover{filter:brightness(1.08)}
+.mscroll{overflow-x:auto}
+.manifest{width:100%;min-width:470px;border-collapse:collapse;font-size:12px}
+.manifest th{text-align:left;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);padding:4px 3px;border-bottom:1px dashed var(--line)}
+.manifest td{padding:3px}
+.manifest tr.in td:first-child{box-shadow:inset 3px 0 var(--teal)}
+.manifest tr.out{opacity:.55}
+.manifest .x{border:0;background:none;color:var(--ink-2);cursor:pointer;font-size:16px;padding:0 4px}
+.manifest td.rank{font:700 11px var(--mono);color:var(--ink-2);width:22px;text-align:center}
+.err{color:var(--signal);font-weight:600;font-size:12px;min-height:18px;margin-top:6px}
+
+.mapwrap{position:relative}
+svg.map{width:100%;height:auto;display:block}
+.edge{stroke:var(--road);stroke-width:5;stroke-linecap:round}
+.edge.tree{stroke:var(--teal);stroke-width:6;opacity:.55}
+.elabel{font:600 11px var(--mono);fill:var(--ink-2);paint-order:stroke;stroke:var(--card);stroke-width:4px}
+.routeline{fill:none;stroke:var(--signal);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 9}
+.node circle.ring{fill:var(--card);stroke:var(--ink);stroke-width:3}
+.node.hub circle.ring{fill:var(--ink)}
+.node.stop circle.ring{stroke:var(--signal);stroke-width:4}
+.node text.name{font:600 12px var(--sans);fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:4px}
+.node text.dist{font:700 10px var(--mono);fill:var(--teal)}
+.badge circle{fill:var(--signal)} .badge text{font:700 11px var(--mono);fill:#fff}
+.van{transition:none}
+.maptools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.chip{font:600 11px var(--mono);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--paper);cursor:pointer;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.legs{list-style:none;margin:10px 0 0;padding:0;font:12px var(--mono);counter-reset:leg}
+.legs li{padding:5px 0;border-top:1px dashed var(--line);display:flex;gap:8px;justify-content:space-between}
+.legs li span:first-child:before{counter-increment:leg;content:counter(leg) ". ";color:var(--signal);font-weight:700}
+
+.dpscroll{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:8px}
+table.dp{border-collapse:separate;border-spacing:2px;font:10px var(--mono);margin:4px}
+table.dp th{position:sticky;background:var(--card);color:var(--ink-2);font-weight:600;padding:2px 4px;z-index:1}
+table.dp thead th{top:0} table.dp tbody th{left:0;text-align:right;white-space:nowrap}
+table.dp td{min-width:30px;height:24px;text-align:center;border-radius:4px;color:var(--ink)}
+table.dp td.path{outline:2px solid var(--ink);outline-offset:-2px;font-weight:700}
+table.dp td.took{outline:2px solid var(--signal);outline-offset:-2px;background:var(--signal)!important;color:#fff}
+.formula{font:12px var(--mono);color:var(--ink-2);min-height:36px;margin-top:8px;padding:8px 10px;border-left:3px solid var(--teal);background:var(--paper);border-radius:0 6px 6px 0}
+
+.bench{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+table.bt{width:100%;border-collapse:collapse;font:12px var(--mono)}
+table.bt th,table.bt td{padding:5px 6px;text-align:right;border-bottom:1px dashed var(--line)} table.bt th{color:var(--ink-2);font-size:10px;text-transform:uppercase}
+svg.chart{width:100%;height:auto}
+.axis{stroke:var(--line)} .axt{font:10px var(--mono);fill:var(--ink-2)}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font:11px var(--mono);margin-top:4px}.leg i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+.themebtn{position:fixed;right:14px;bottom:14px;z-index:5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <small>DAA Capstone · Dispatch Console</small>
+      <h1>Mini-Courier Planner</h1>
+    </div>
+    <div class="tickets">
+      <div class="ticket"><span>Van load</span><b id="tLoad">–</b><div class="meter"><i id="tMeter"></i></div></div>
+      <div class="ticket"><span>Priority value</span><b id="tValue">–</b></div>
+      <div class="ticket"><span>Tour length</span><b id="tKm">–</b></div>
+      <div class="ticket"><span>Parcels loaded</span><b id="tCount">–</b></div>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Algorithm pipeline">
+    <button class="stage" data-go="manifestCard"><div class="dot">1</div><h4>Merge Sort</h4><p id="ms-sort">O(N log N)</p></button>
+    <button class="stage" data-go="dpCard"><div class="dot">2</div><h4>0/1 Knapsack</h4><p id="ms-knapsack">O(N·W)</p></button>
+    <button class="stage" data-go="mapCard" data-view="tree"><div class="dot">3</div><h4>Dijkstra</h4><p id="ms-dijkstra">O((V+E) log V)</p></button>
+    <button class="stage" data-go="mapCard" data-view="route"><div class="dot">4</div><h4>NN-TSP Route</h4><p id="ms-tsp">O(K²)</p></button>
+  </nav>
+
+  <div class="grid">
+    <section class="card" id="manifestCard">
+      <h2><span class="tag">01</span> Parcel manifest</h2>
+      <p class="sub">Edit anything, then dispatch. The rows are re-ordered by merge sort (deadline ↑, value ↓). Loaded parcels have a teal edge.</p>
+      <div class="controls">
+        <label class="cap">Van capacity <input id="cap" type="number" min="1" max="500"> kg</label>
+        <button class="btn" id="add">+ Parcel</button>
+        <button class="btn" id="reset">Reset demo</button>
+        <button class="btn primary" id="go">Dispatch ▸</button>
+      </div>
+      <div class="mscroll"><table class="manifest">
+        <thead><tr><th>#</th><th>ID</th><th>Destination</th><th>kg</th><th>Value</th><th>Due h</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <div class="err" id="err" role="alert"></div>
+    </section>
+
+    <section class="card" id="mapCard">
+      <h2><span class="tag">03·04</span> City map</h2>
+      <p class="sub">Roads in km. Teal numbers = Dijkstra distance from the Warehouse. Orange badges = stop order on the nearest-neighbour tour.</p>
+      <div class="mapwrap"><svg class="map" id="map" viewBox="0 0 640 420" role="img" aria-label="City road map with delivery route"></svg></div>
+      <div class="maptools">
+        <button class="chip" id="vRoute" aria-pressed="true">Delivery tour</button>
+        <button class="chip" id="vTree" aria-pressed="false">Dijkstra tree</button>
+        <button class="chip" id="replay">↻ Replay van</button>
+      </div>
+      <ol class="legs" id="legs"></ol>
+    </section>
+
+    <section class="card span" id="dpCard">
+      <h2><span class="tag">02</span> Knapsack DP table</h2>
+      <p class="sub">Rows = parcels in sorted order, columns = capacity 0…W. Darker cells hold more value. The outlined cells are the backtracking path, and orange cells are where a parcel was taken. Hover any cell to see its recurrence.</p>
+      <div class="dpscroll"><table class="dp" id="dp"></table></div>
+      <div class="formula" id="formula">Hover a cell…</div>
+    </section>
+
+    <section class="card span" id="benchCard">
+      <h2><span class="tag">05</span> Scalability benchmark</h2>
+      <p class="sub">Runs the same timing experiment as <code>run_benchmarks()</code> on synthetic datasets (30 nodes, capacity 150), live on your machine.</p>
+      <div class="controls"><button class="btn" id="bench">Run benchmark</button></div>
+      <div class="bench">
+        <div><svg class="chart" id="chart" viewBox="0 0 520 260"></svg><div class="leg" id="chartLeg"></div></div>
+        <table class="bt" id="bt"></table>
+      </div>
+    </section>
+  </div>
+</div>
+<button class="btn themebtn" id="theme" aria-label="Toggle theme">◐</button>
+
+<script>
+const $ = s => document.querySelector(s);
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+
+// Hand-placed coordinates for the demo city; any unknown node falls back to a circle layout.
+const POS = { Warehouse:[80,215], Sector_14:[235,85], Sohna_Road:[230,345], MG_Road:[385,220], Cyber_Hub:[500,80], Golf_Course:[545,340] };
+let G = {}, HUB = "Warehouse", DEFAULT = null, state = { parcels: [], capacity: 15 }, result = null, view = "route", vanAnim = null;
+
+function pos(n){ if (POS[n]) return POS[n]; const keys = Object.keys(G), i = keys.indexOf(n), a = i / keys.length * 2 * Math.PI; return [320 + 200*Math.cos(a), 210 + 160*Math.sin(a)]; }
+const destinations = () => Object.keys(G).filter(n => n !== HUB);
+const pretty = s => s.replace(/_/g, " ");
+
+async function api(path, body){
+  const r = await fetch(path, body ? { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || "Request failed"); return j;
+}
+
+/* ---------- Manifest ---------- */
+function renderRows(){
+  const order = result ? result.sorted.map(p => p.id) : null;
+  const sel = new Set(result ? result.selected_ids : []);
+  const rows = [...state.parcels];
+  if (order) rows.sort((a,b) => order.indexOf(a.id) - order.indexOf(b.id));
+  $("#rows").innerHTML = "";
+  rows.forEach((p) => {
+    const tr = document.createElement("tr");
+    if (result) tr.className = sel.has(p.id) ? "in" : "out";
+    const rank = order ? order.indexOf(p.id) + 1 : "·";
+    tr.innerHTML = `<td class="rank">${rank > 0 ? rank : "·"}</td>
+      <td><input data-k="id" value="${p.id}" aria-label="Parcel ID"></td>
+      <td><select data-k="dest" aria-label="Destination">${destinations().map(d => `<option value="${d}" ${d===p.dest?"selected":""}>${pretty(d)}</option>`).join("")}</select></td>
+      <td><input data-k="weight" type="number" min="1" value="${p.weight}" aria-label="Weight"></td>
+      <td><input data-k="value" type="number" min="0" value="${p.value}" aria-label="Value"></td>
+      <td><input data-k="deadline" type="number" min="0" value="${p.deadline}" aria-label="Deadline"></td>
+      <td><button class="x" title="Remove" aria-label="Remove parcel">×</button></td>`;
+    tr.querySelectorAll("[data-k]").forEach(inp => inp.addEventListener("input", () => {
+      const k = inp.dataset.k; p[k] = ["weight","value","deadline"].includes(k) ? Number(inp.value) : inp.value;
+    }));
+    tr.querySelector(".x").onclick = () => { state.parcels = state.parcels.filter(q => q !== p); renderRows(); };
+    $("#rows").appendChild(tr);
+  });
+}
+
+/* ---------- Map ---------- */
+function renderMap(){
+  const svg = $("#map"); svg.innerHTML = "";
+  const gEdges = el("g", {}, svg), gTree = el("g", {}, svg), gRoute = el("g", {}, svg), gNodes = el("g", {}, svg), gBadges = el("g", {}, svg);
+  const done = new Set();
+  for (const a in G) for (const b in G[a]) {
+    const key = [a,b].sort().join("|"); if (done.has(key)) continue; done.add(key);
+    const [x1,y1] = pos(a), [x2,y2] = pos(b);
+    el("line", { x1, y1, x2, y2, class:"edge" }, gEdges);
+    const t = el("text", { x:(x1+x2)/2, y:(y1+y2)/2 + 4, "text-anchor":"middle", class:"elabel" }, gEdges); t.textContent = G[a][b];
+  }
+  const stops = result && result.route ? result.route.tour : [];
+  if (result && view === "tree") {
+    for (const n in result.hub_prev) { const p = result.hub_prev[n]; if (!p) continue;
+      const [x1,y1] = pos(p), [x2,y2] = pos(n); el("line", { x1, y1, x2, y2, class:"edge tree" }, gTree); }
+  }
+  if (result && result.route && view === "route") {
+    const pts = result.route.road.map(pos);
+    el("polyline", { points: pts.map(p => p.join(",")).join(" "), class:"routeline" }, gRoute);
+    const van = el("g", { class:"van" }, gRoute);
+    el("rect", { x:-13, y:-9, width:26, height:18, rx:4, fill:"var(--signal)" }, van);
+    el("rect", { x:4, y:-6, width:7, height:6, rx:1, fill:"#fff", opacity:.85 }, van);
+    el("circle", { cx:-7, cy:9, r:3, fill:"var(--ink)" }, van); el("circle", { cx:7, cy:9, r:3, fill:"var(--ink)" }, van);
+    animateVan(van, pts);
+  }
+  for (const n in G) {
+    const [x,y] = pos(n), isStop = stops.includes(n) && n !== HUB;
+    const g = el("g", { class:"node" + (n===HUB ? " hub" : "") + (isStop ? " stop" : ""), transform:`translate(${x},${y})` }, gNodes);
+    el("circle", { r: n===HUB ? 16 : 12, class:"ring" }, g);
+    if (n === HUB) { const t = el("text", { y:4, "text-anchor":"middle", fill:"var(--paper)", "font-size":12, "font-weight":700 }, g); t.textContent = "W"; }
+    const below = y > 300; const nm = el("text", { y: below ? 34 : -22, "text-anchor":"middle", class:"name" }, g); nm.textContent = pretty(n);
+    if (result) { const d = el("text", { y: below ? 48 : -36, "text-anchor":"middle", class:"dist" }, g); d.textContent = result.hub_dist[n] + " km"; }
+  }
+  if (result && result.route && view === "route") {
+    result.route.tour.slice(1, -1).forEach((n, i) => {
+      const [x,y] = pos(n); const b = el("g", { class:"badge", transform:`translate(${x+14},${y+14})` }, gBadges);
+      el("circle", { r:10 }, b); const t = el("text", { y:4, "text-anchor":"middle" }, b); t.textContent = i + 1;
+    });
+  }
+  // legs list
+  const legs = $("#legs"); legs.innerHTML = "";
+  if (result && result.route) {
+    const t = result.route.tour;
+    for (let i = 0; i < t.length - 1; i++) {
+      const li = document.createElement("li");
+      const d = legDistance(t[i], t[i+1]);
+      li.innerHTML = `<span>${pretty(t[i])} → ${pretty(t[i+1])}</span><span>${d} km</span>`; legs.appendChild(li);
+    }
+  } else if (result) legs.innerHTML = "<li><span>No parcel fits in the van, so there is no tour.</span></li>";
+}
+function legDistance(a, b){ // small client Dijkstra just for the per-leg label
+  const dist = {}; for (const n in G) dist[n] = Infinity; dist[a] = 0; const left = new Set(Object.keys(G));
+  while (left.size) { let u = null; for (const n of left) if (u === null || dist[n] < dist[u]) u = n; left.delete(u); for (const v in G[u]) dist[v] = Math.min(dist[v], dist[u] + G[u][v]); }
+  return dist[b];
+}
+function animateVan(van, pts){
+  cancelAnimationFrame(vanAnim);
+  const segs = []; let total = 0;
+  for (let i = 0; i < pts.length - 1; i++) { const L = Math.hypot(pts[i+1][0]-pts[i][0], pts[i+1][1]-pts[i][1]); segs.push(L); total += L; }
+  if (!total) { van.setAttribute("transform", `translate(${pts[0]})`); return; }
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dur = reduce ? 0 : Math.min(9000, total * 9), t0 = performance.now();
+  const step = now => {
+    let d = dur ? Math.min(1, (now - t0) / dur) * total : total, i = 0;
+    while (i < segs.length - 1 && d > segs[i]) { d -= segs[i]; i++; }
+    const f = segs[i] ? Math.min(1, d / segs[i]) : 1, [x1,y1] = pts[i], [x2,y2] = pts[i+1];
+    van.setAttribute("transform", `translate(${x1 + (x2-x1)*f},${y1 + (y2-y1)*f - 2})`);
+    if (dur && now - t0 < dur) vanAnim = requestAnimationFrame(step);
+  };
+  vanAnim = requestAnimationFrame(step);
+}
+
+/* ---------- DP table ---------- */
+function renderDP(){
+  const tb = $("#dp"); tb.innerHTML = "";
+  if (!result) return;
+  const T = result.dp_table, W = result.capacity, P = result.sorted, max = Math.max(1, ...T[T.length-1]);
+  const path = new Map(result.backtrack.map(c => [c.i + ":" + c.w, c.took]));
+  let html = "<thead><tr><th>i \\ w</th>" + Array.from({ length: W + 1 }, (_, w) => `<th>${w}</th>`).join("") + "</tr></thead><tbody>";
+  T.forEach((row, i) => {
+    html += `<tr><th>${i === 0 ? "∅" : `${i}·${P[i-1].id}`}</th>`;
+    row.forEach((v, w) => {
+      const k = i + ":" + w, cls = path.has(k) ? (path.get(k) ? "took" : "path") : "";
+      const a = (v / max) * 0.85;
+      html += `<td class="${cls}" data-i="${i}" data-w="${w}" style="background:color-mix(in srgb, var(--teal) ${Math.round(a*100)}%, transparent)">${v}</td>`;
+    });
+    html += "</tr>";
+  });
+  tb.innerHTML = html + "</tbody>";
+  tb.onmouseover = e => {
+    const td = e.target.closest("td"); if (!td) return;
+    const i = +td.dataset.i, w = +td.dataset.w, v = T[i][w];
+    if (i === 0) { $("#formula").textContent = `dp[0][${w}] = 0 (no parcels considered yet)`; return; }
+    const p = P[i-1], skip = T[i-1][w];
+    $("#formula").innerHTML = p.weight <= w
+      ? `dp[${i}][${w}] = max( skip ${p.id}: dp[${i-1}][${w}] = ${skip},  take ${p.id}: ${p.value} + dp[${i-1}][${w-p.weight}] = ${p.value + T[i-1][w-p.weight]} ) = <b>${v}</b>`
+      : `dp[${i}][${w}] = dp[${i-1}][${w}] = <b>${v}</b>  (${p.id} weighs ${p.weight} kg > ${w} kg, so it can't fit)`;
+  };
+}
+
+/* ---------- Tickets & rail ---------- */
+function renderStats(){
+  if (!result) return;
+  const r = result;
+  $("#tLoad").textContent = `${r.used_weight}/${r.capacity} kg`;
+  $("#tMeter").style.width = (r.used_weight / r.capacity * 100) + "%";
+  $("#tValue").textContent = r.max_value;
+  $("#tKm").textContent = r.route ? r.route.km + " km" : "—";
+  $("#tCount").textContent = `${r.selected_ids.length}/${r.sorted.length}`;
+  const t = r.timings_ms;
+  [["sort","O(N log N)"],["knapsack","O(N·W)"],["dijkstra","O((V+E) log V)"],["tsp","O(K²)"]].forEach(([k, big]) =>
+    $("#ms-" + k).textContent = t[k] != null ? `${big} · ${t[k].toFixed(3)} ms` : big);
+}
+async function playRail(){
+  const stages = [...document.querySelectorAll(".stage")];
+  stages.forEach(s => s.classList.remove("done","active"));
+  for (const s of stages) { s.classList.add("active"); await new Promise(r => setTimeout(r, 260)); s.classList.remove("active"); s.classList.add("done"); }
+}
+
+/* ---------- Actions ---------- */
+async function dispatch(){
+  $("#err").textContent = "";
+  state.capacity = Number($("#cap").value);
+  try {
+    result = await api("/api/plan", { capacity: state.capacity, parcels: state.parcels });
+    playRail(); renderRows(); renderMap(); renderDP(); renderStats();
+  } catch (e) { $("#err").textContent = e.message; }
+}
+function loadDefault(){
+  state = { capacity: DEFAULT.capacity, parcels: DEFAULT.parcels.map(p => ({ ...p })) };
+  $("#cap").value = state.capacity; result = null; dispatch();
+}
+function setView(v){ view = v; $("#vRoute").setAttribute("aria-pressed", v === "route"); $("#vTree").setAttribute("aria-pressed", v === "tree"); renderMap(); }
+
+$("#go").onclick = dispatch;
+$("#reset").onclick = loadDefault;
+$("#add").onclick = () => {
+  let n = state.parcels.length + 1; while (state.parcels.some(p => p.id === "P" + (100 + n))) n++;
+  state.parcels.push({ id: "P" + (100 + n), dest: destinations()[0], weight: 3, value: 70, deadline: 3 }); renderRows();
+};
+$("#vRoute").onclick = () => setView("route");
+$("#vTree").onclick = () => setView("tree");
+$("#replay").onclick = () => setView("route");
+document.querySelectorAll(".stage").forEach(s => s.onclick = () => {
+  if (s.dataset.view) setView(s.dataset.view);
+  document.getElementById(s.dataset.go).scrollIntoView({ behavior: "smooth", block: "start" });
+});
+$("#theme").onclick = () => {
+  const root = document.documentElement, dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+$("#bench").onclick = async () => {
+  const b = $("#bench"); b.disabled = true; b.textContent = "Running…";
+  try { drawBench((await api("/api/benchmark")).rows); } catch (e) { $("#bt").innerHTML = `<tr><td>${e.message}</td></tr>`; }
+  b.disabled = false; b.textContent = "Run again";
+};
+function drawBench(rows){
+  const S = [["sort","Merge Sort","var(--gold)"],["knapsack","Knapsack DP","var(--signal)"],["route","Dijkstra + NN-TSP","var(--teal)"]];
+  const svg = $("#chart"); svg.innerHTML = "";
+  const L = 46, R = 505, T = 12, B = 225, xmax = Math.max(...rows.map(r => r.n)), ymax = Math.max(...rows.flatMap(r => S.map(s => r[s[0]]))) * 1.1;
+  const X = n => L + (n / xmax) * (R - L), Y = v => B - (v / ymax) * (B - T);
+  for (let k = 0; k <= 4; k++) { const v = ymax * k / 4; el("line", { x1:L, x2:R, y1:Y(v), y2:Y(v), class:"axis" }, svg); const t = el("text", { x:L-6, y:Y(v)+3, "text-anchor":"end", class:"axt" }, svg); t.textContent = v.toFixed(v < 10 ? 1 : 0); }
+  rows.forEach(r => { const t = el("text", { x:X(r.n), y:B+16, "text-anchor":"middle", class:"axt" }, svg); t.textContent = r.n; });
+  const xl = el("text", { x:(L+R)/2, y:254, "text-anchor":"middle", class:"axt" }, svg); xl.textContent = "parcels (N)";
+  const yl = el("text", { x:12, y:(T+B)/2, "text-anchor":"middle", class:"axt", transform:`rotate(-90 12 ${(T+B)/2})` }, svg); yl.textContent = "ms";
+  S.forEach(([k,,c]) => {
+    el("polyline", { points: rows.map(r => `${X(r.n)},${Y(r[k])}`).join(" "), fill:"none", stroke:c, "stroke-width":2.5 }, svg);
+    rows.forEach(r => el("circle", { cx:X(r.n), cy:Y(r[k]), r:3.5, fill:c }, svg));
+  });
+  $("#chartLeg").innerHTML = S.map(([,n,c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("");
+  $("#bt").innerHTML = "<tr><th>N</th><th>Sort ms</th><th>DP ms</th><th>Route ms</th></tr>" +
+    rows.map(r => `<tr><td>${r.n}</td><td>${r.sort.toFixed(3)}</td><td>${r.knapsack.toFixed(3)}</td><td>${r.route.toFixed(3)}</td></tr>`).join("");
+}
+
+api("/api/dataset").then(d => { G = d.graph; HUB = d.hub; DEFAULT = d; loadDefault(); })
+  .catch(() => { $("#err").textContent = "Couldn't reach the server. Start it with: python ui_server.py"; });
+</script>
+</body>
+</html>
